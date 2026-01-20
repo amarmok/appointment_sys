@@ -29,22 +29,18 @@ public class SmartSchedulingService {
     private final AppointmentRepository appointmentRepository;
     private final ServiceRepository serviceRepository;
 
-    // Key Method: Get a suggestion from Gemini
 
     public SuggestionResponse getSuggestedTime(Long serviceId, LocalDate targetDate, String customerPreference) {
 
-        // 1. Fetch necessary data (YOUR EXISTING CODE)
         com.example.appointmentsystem.entity.Service requestedService = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new BusinessException("Service not found"));
         List<WorkingSchedule> weeklySchedule = workingScheduleRepository.findAll();
         List<Appointment> existingAppointments = appointmentRepository
                 .findByAppointmentDateAndStatusNot(targetDate, AppointmentStatus.CANCELLED);
 
-        // 2. Build the structured prompt
         String prompt = buildSchedulingPrompt(requestedService, weeklySchedule, existingAppointments, targetDate, customerPreference);
 
         try {
-            // 3. Call Gemini
             Client client = new Client();
             GenerateContentResponse response = client.models.generateContent(
                     "gemini-2.0-flash",
@@ -52,14 +48,12 @@ public class SmartSchedulingService {
                     null
             );
 
-            // 4. Extract the text response
             String aiResponse = response.text();
 
-            // 5. PARSE THE JSON RESPONSE (This was missing!)
             ObjectMapper mapper = new ObjectMapper();
             SuggestionResponse suggestion = mapper.readValue(aiResponse, SuggestionResponse.class);
 
-            return suggestion; // Now returns the parsed object, not raw string
+            return suggestion;
 
         } catch (ApiException e) {
             if (e.code() == 429) {
@@ -78,8 +72,6 @@ public class SmartSchedulingService {
             );
         }
     }
-    // YOUR buildSchedulingPrompt METHOD REMAINS EXACTLY THE SAME
-    // It is already perfect. Do not change it.
     private String buildSchedulingPrompt( com.example.appointmentsystem.entity.Service service,
                                          List<WorkingSchedule> schedule,
                                          List<Appointment> appointments,
@@ -87,7 +79,6 @@ public class SmartSchedulingService {
                                          String preference) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        // Format working hours
         String scheduleText = schedule.stream()
                 .map(ws -> String.format("- %s: %s to %s (Holiday: %s)",
                         ws.getDayOfWeek(),
@@ -96,7 +87,6 @@ public class SmartSchedulingService {
                         ws.isHoliday()))
                 .collect(Collectors.joining("\n"));
 
-        // Format existing appointments
         String appointmentsText = appointments.stream()
                 .map(apt -> String.format("- %s to %s for service '%s'",
                         apt.getStartTime().format(formatter),
@@ -104,7 +94,6 @@ public class SmartSchedulingService {
                         apt.getService().getName()))
                 .collect(Collectors.joining("\n"));
 
-        // Construct the final prompt
         return String.format("""
             You are an intelligent scheduling assistant for a service business.
             
